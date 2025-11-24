@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calculadora de Empate - Casino</title>
+    <style>
+      :root {
+        --bg-color: #1e1e1e;
+        --card-bg: #ffffff;
+        --text-color: #f0f0f0;
+        --accent-color: #ffd700;
+        --red-suit: #e74c3c;
+        --black-suit: #2c3e50;
+        --green-felt: #277714;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      h1 {
+        margin-bottom: 10px;
+        text-align: center;
+      }
+
+      .stats-panel {
+        background-color: #333;
+        padding: 15px;
+        border-radius: 10px;
+        width: 90%;
+        max-width: 800px;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        margin-bottom: 20px;
+        border: 2px solid var(--accent-color);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      }
+
+      .stat-box {
+        text-align: center;
+      }
+      .stat-value {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: var(--accent-color);
+      }
+      .stat-label {
+        font-size: 0.9em;
+        color: #aaa;
+      }
+
+      .controls {
+        margin-bottom: 20px;
+        display: flex;
+        gap: 15px;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 1em;
+        cursor: pointer;
+        border: none;
+        border-radius: 5px;
+        font-weight: bold;
+        transition: transform 0.1s;
+      }
+      button:active {
+        transform: scale(0.95);
+      }
+      .btn-undo {
+        background-color: #f39c12;
+        color: white;
+      }
+      .btn-reset {
+        background-color: #c0392b;
+        color: white;
+      }
+
+      .game-board {
+        display: grid;
+        grid-template-columns: repeat(13, 1fr);
+        gap: 8px;
+        background-color: var(--green-felt);
+        padding: 20px;
+        border-radius: 15px;
+        width: 100%;
+        max-width: 1100px;
+        overflow-x: auto;
+        border: 10px solid #4a2c2c;
+      }
+
+      .card {
+        background-color: var(--card-bg);
+        border-radius: 6px;
+        height: 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        position: relative;
+        user-select: none;
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        transition: background-color 0.2s;
+      }
+
+      .card:hover {
+        background-color: #e0e0e0;
+      }
+      .card:active {
+        transform: translateY(2px);
+      }
+
+      .card.empty {
+        opacity: 0.3;
+        background-color: #555;
+        cursor: not-allowed;
+      }
+
+      .card-val {
+        font-size: 1.2em;
+        font-weight: bold;
+      }
+      .card-suit {
+        font-size: 1.5em;
+      }
+
+      .red {
+        color: var(--red-suit);
+      }
+      .black {
+        color: var(--black-suit);
+      }
+
+      .counter-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background-color: var(--accent-color);
+        color: #000;
+        font-size: 0.75em;
+        font-weight: bold;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border: 1px solid #000;
+      }
+
+      .row-header {
+        grid-column: 1 / -1;
+        text-align: center;
+        font-size: 0.8em;
+        opacity: 0.5;
+        margin-top: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎲 Probabilidad de Empate - 8 Mazos 🎲</h1>
+
+    <div class="stats-panel">
+      <div class="stat-box">
+        <div class="stat-label">Cartas Restantes (N)</div>
+        <div id="total-cards" class="stat-value">416</div>
+      </div>
+      <div
+        class="stat-box"
+        style="
+          border: 2px solid gold;
+          padding: 10px;
+          border-radius: 8px;
+          background: #444;
+        "
+      >
+        <div class="stat-label">PROBABILIDAD DE EMPATE</div>
+        <div id="tie-prob" class="stat-value">7.53%</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn-undo" onclick="undoAction()">↩️ DESHACER</button>
+      <button class="btn-reset" onclick="resetGame()">🔄 REINICIAR</button>
+    </div>
+
+    <div id="game-board" class="game-board"></div>
+
+    <script>
+      const SUITS = [
+        { code: "D", symbol: "♦", color: "red" },
+        { code: "P", symbol: "♠", color: "black" },
+        { code: "T", symbol: "♣", color: "black" },
+        { code: "C", symbol: "♥", color: "red" },
+      ];
+
+      const RANKS = [
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "J",
+        "Q",
+        "K",
+        "A",
+      ];
+      const INITIAL_COUNT = 8;
+
+      let deckState = {};
+      let historyStack = [];
+
+      function initGame() {
+        deckState = {};
+        historyStack = [];
+
+        SUITS.forEach((suit) => {
+          deckState[suit.code] = {};
+          RANKS.forEach((rank) => {
+            deckState[suit.code][rank] = INITIAL_COUNT;
+          });
+        });
+
+        renderBoard();
+        updateStats();
+      }
+
+      function renderBoard() {
+        const board = document.getElementById("game-board");
+        board.innerHTML = "";
+
+        SUITS.forEach((suit) => {
+          RANKS.forEach((rank) => {
+            const count = deckState[suit.code][rank];
+
+            const cardDiv = document.createElement("div");
+            cardDiv.className = `card ${suit.color} ${
+              count === 0 ? "empty" : ""
+            }`;
+            cardDiv.onclick = () => handleCardClick(suit.code, rank);
+
+            const rankSpan = document.createElement("span");
+            rankSpan.className = "card-val";
+            rankSpan.innerText = rank;
+
+            const suitSpan = document.createElement("span");
+            suitSpan.className = "card-suit";
+            suitSpan.innerText = suit.symbol;
+
+            const badge = document.createElement("div");
+            badge.className = "counter-badge";
+            badge.innerText = count;
+
+            cardDiv.appendChild(rankSpan);
+            cardDiv.appendChild(suitSpan);
+            cardDiv.appendChild(badge);
+            board.appendChild(cardDiv);
+          });
+        });
+      }
+
+      function handleCardClick(suitCode, rank) {
+        if (deckState[suitCode][rank] > 0) {
+          historyStack.push(JSON.stringify(deckState));
+          deckState[suitCode][rank]--;
+          renderBoard();
+          updateStats();
+        }
+      }
+
+      function undoAction() {
+        if (historyStack.length > 0) {
+          const previousState = historyStack.pop();
+          deckState = JSON.parse(previousState);
+          renderBoard();
+          updateStats();
+        } else {
+          alert("No hay movimientos para deshacer");
+        }
+      }
+
+      function resetGame() {
+        if (confirm("¿Seguro que quieres reiniciar la partida?")) {
+          initGame();
+        }
+      }
+
+      function updateStats() {
+        let N = 0;
+        let rankCounts = {};
+
+        RANKS.forEach((r) => (rankCounts[r] = 0));
+
+        SUITS.forEach((suit) => {
+          RANKS.forEach((rank) => {
+            let qty = deckState[suit.code][rank];
+            N += qty;
+            rankCounts[rank] += qty;
+          });
+        });
+
+        let sumPairs = 0;
+
+        if (N > 1) {
+          RANKS.forEach((rank) => {
+            let n = rankCounts[rank];
+            if (n > 1) {
+              sumPairs += n * (n - 1);
+            }
+          });
+
+          let totalCombinations = N * (N - 1);
+          let probability = sumPairs / totalCombinations;
+
+          document.getElementById("tie-prob").innerText =
+            (probability * 100).toFixed(2) + "%";
+          if (probability >= 0.5) {
+            alert("Empieza a apostar por el EMPATE!    ");
+          }
+        } else {
+          document.getElementById("tie-prob").innerText = "0.00%";
+        }
+
+        document.getElementById("total-cards").innerText = N;
+      }
+
+      initGame();
+    </script>
+  </body>
+</html>
